@@ -6,25 +6,27 @@ from flask import request, send_file, abort
 from flask_restx import Resource
 
 from .. import s3_storage
+from ..util.decorator import require_access_token
 from ..util.dto import ArrangementDTO
-from app.main.service.database import arrangement_service, user_service
+from ..service.database import arrangement_service, user_service
+from ..controller import websocket_controller
 
 api = ArrangementDTO().api
 create_arrangement = ArrangementDTO().create_arrangement
 create_arrangement_response = ArrangementDTO().create_arrangement_response
 single_arrangement = ArrangementDTO().arrangement
 arrangements_list = ArrangementDTO().arrangements_list
-vk_id = ArrangementDTO().vk_id
 
 executor = ThreadPoolExecutor(max_workers=5)
 
 
 @api.route('/create')
 class CreateArrangement(Resource):
-    @api.doc(description='Create an arrangement')
+    @api.doc(description='Create an arrangement', security='access_token')
     @api.expect(create_arrangement)
     @api.response(201, 'Success', model=create_arrangement_response)
-    def post(self):
+    @require_access_token
+    def post(self, user_id):
         if 'file' not in request.files:
             return {'error': 'No file part in the request'}, 400
 
@@ -38,6 +40,7 @@ class CreateArrangement(Resource):
             return {'error': 'No JSON data provided'}, 400
 
         data = json.loads(json_string)
+        data["user_id"] = user_id
 
         result = arrangement_service.add_arrangement(data)
 
@@ -48,20 +51,18 @@ class CreateArrangement(Resource):
                             arrangement_id=arrangement_id,
                             drums_file=drums_file,
                             bpm=data['bpm'],
-                            tags=data['tags'])
+                            tags=data['tags'],
+                            completion=websocket_controller.data_updated(user_id))
 
         return result
 
 
 @api.route('/')
 class ArrangementsList(Resource):
-    @api.doc(description='Get an arrangements list')
-    @api.expect(vk_id)
+    @api.doc(description='Get an arrangements list', security='access_token')
     @api.response(200, 'Success', model=arrangements_list)
-    def get(self):
-        json_data = request.get_json()
-        user_id = json_data.get('user_id')
-
+    @require_access_token
+    def get(self, user_id):
         try:
             try:
                 if user_service.get_user(user_id) is None:
@@ -78,13 +79,18 @@ class ArrangementsList(Resource):
 
 @api.route('/<int:arrangement_id>')
 class SingleArrangement(Resource):
-    @api.doc(description='Get a single arrangement')
+    @api.doc(description='Get a single arrangement', security='access_token')
     @api.response(200, 'Success', model=single_arrangement)
-    def get(self, arrangement_id):
+    @require_access_token
+    def get(self, user_id, arrangement_id):
         try:
             arrangement = arrangement_service.get_arrangement(arrangement_id)
-            if arrangement:
-                return arrangement, 200
+
+            if arrangement and arrangement.user_id == user_id:
+                return arrangement.to_dict(), 200
+            elif arrangement:
+                return {'error': 'Access denied'}, 403
+
             return {'error': 'Arrangement not found'}, 404
         except Exception as e:
             return {'error': str(e)}, 400
@@ -92,21 +98,28 @@ class SingleArrangement(Resource):
 
 @api.route('/file/<int:arrangement_id>')
 class ArrangementFile(Resource):
-    @api.doc(description='Get an arrangement file', produces=['application/octet-stream'])
+    @api.doc(description='Get an arrangement file', produces=['application/octet-stream'], security='access_token')
     @api.response(200, 'File received')
-    def get(self, arrangement_id):
+    @require_access_token
+    def get(self, user_id, arrangement_id):
         arrangement = arrangement_service.get_arrangement(arrangement_id)
+
+        if not arrangement:
+            return {'error': 'Arrangement not found'}, 404
+        elif arrangement.user_id != user_id:
+            return {'error': 'Access denied'}, 403
+
         file_name = arrangement.file_name
         arrangement_name = arrangement.name
 
         if not file_name:
-            abort(404, "File not found.")
+            return {"message": "File not found."}, 404
 
         try:
             file_data = s3_storage.get(file_name)
 
             if not file_data:
-                abort(404, "File content is empty or not found.")
+                return {"message": "File content is empty or not found."}, 404
 
             byte_io = BytesIO(file_data)
             byte_io.seek(0)
