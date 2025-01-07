@@ -15,19 +15,3 @@ CREATE TABLE arrangements (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status arrangement_status NOT NULL
 );
-
-CREATE OR REPLACE FUNCTION notify_user_changes()
-RETURNS TRIGGER AS $$
-BEGIN
-    PERFORM pg_notify(
-        'arrangement_changes',
-        json_build_object('user_id', NEW.user_id)::text
-    );
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER arrangement_changes_trigger
-AFTER INSERT OR UPDATE OR DELETE ON arrangements
-FOR EACH ROW
-EXECUTE FUNCTION notify_user_changes();
