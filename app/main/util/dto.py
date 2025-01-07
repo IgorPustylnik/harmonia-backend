@@ -35,13 +35,6 @@ class ArrangementDTO:
         'arrangements': fields.List(fields.Nested(arrangement), description='List of arrangements')
     })
 
-    vk_id = api.model('VK ID', {
-        'user_id': fields.Integer(required=True, description='VK user ID', example=1),
-    })
 
-
-class RegisterDTO:
-    api = Namespace('auth', description='Authentication related operations')
-    vk_id = api.model('VK ID', {
-        'user_id': fields.Integer(required=True, description='User\'s VK ID', example=1)
-    })
+class UserDTO:
+    api = Namespace('user', description='User related operations')
