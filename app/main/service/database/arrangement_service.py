@@ -9,7 +9,7 @@ from typing import Dict, Tuple
 from app.main.service import music_gen_service
 
 
-def generate_music(arrangement_id: int, drums_file: bytes, bpm: int, tags: str):
+def generate_music(arrangement_id: int, drums_file: bytes, bpm: int, tags: str, completion):
     arrangement = None
     try:
         file_response, file_status = music_gen_service.create(drums_file=drums_file, bpm=bpm, tags=tags)
@@ -24,10 +24,12 @@ def generate_music(arrangement_id: int, drums_file: bytes, bpm: int, tags: str):
             s3_storage.upload(file_response, arrangement.file_name)
 
         update_arrangement(arrangement)
+        completion()
     except Exception as e:
         if arrangement:
             arrangement.status = ArrangementStatus.FAILED
             update_arrangement(arrangement)
+            completion()
         print(f"Error generating music or updating arrangement: {e}")
 
 
@@ -64,11 +66,15 @@ def get_arrangement(arrangement_id: int) -> Arrangement:
 def update_arrangement(arrangement: Arrangement) -> Tuple[Dict[str, str], int]:
     with app.app_context():
         try:
-            if Arrangement.query.filter_by(id=arrangement.id).first():
-                save_changes(arrangement)
-                return {"status": "success", "message": "Arrangement updated successfully."}, 200
-            else:
-                return {"status": "fail", "message": "Arrangement not found."}, 404
+            arrangement_in_db = Arrangement.query.filter_by(id=arrangement.id).first()
+            if arrangement_in_db:
+                arrangement_in_db.name = arrangement.name
+                arrangement_in_db.status = arrangement.status
+                arrangement_in_db.file_name = arrangement.file_name
+
+                if save_changes(arrangement_in_db):
+                    return {"status": "success", "message": "Arrangement updated successfully."}, 200
+            return {"status": "fail", "message": "Arrangement not found."}, 404
         except Exception as e:
             print(f"Error updating arrangement: {e}")
             return {"status": "fail", "message": "Error updating arrangement."}, 500
