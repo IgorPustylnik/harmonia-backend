@@ -131,5 +131,4 @@ class ArrangementFile(Resource):
                 mimetype='application/octet-stream'
             )
         except Exception as e:
-            print(f"Error sending file: {e}")
             abort(500, "Error sending file.")

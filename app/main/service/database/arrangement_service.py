@@ -1,4 +1,5 @@
 import datetime
+import logging
 import uuid
 
 from app.main import db, app, s3_storage
@@ -7,6 +8,9 @@ from app.main.model.arrangements import Arrangement
 from typing import Dict, Tuple
 
 from app.main.service import music_gen_service
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('arrangement_service')
 
 
 def generate_music(arrangement_id: int, drums_file: bytes, bpm: int, tags: str, completion):
@@ -30,7 +34,7 @@ def generate_music(arrangement_id: int, drums_file: bytes, bpm: int, tags: str, 
             arrangement.status = ArrangementStatus.FAILED
             update_arrangement(arrangement)
             completion()
-        print(f"Error generating music or updating arrangement: {e}")
+        logger.error(f"Error generating music or updating arrangement: {e}")
 
 
 def add_arrangement(data: Dict[str, str]) -> Tuple[Dict[str, str], int]:
@@ -50,7 +54,7 @@ def add_arrangement(data: Dict[str, str]) -> Tuple[Dict[str, str], int]:
                     "id": new_arrangement.id}, 201
         return {"status": "fail", "message": "Error adding arrangement."}, 500
     except Exception as e:
-        print(f"Error adding arrangement: {e}")
+        logger.error(f"Error adding arrangement: {e}")
         return {"status": "fail", "message": "Error adding arrangement."}, 500
 
 
@@ -59,7 +63,7 @@ def get_arrangement(arrangement_id: int) -> Arrangement:
         try:
             return Arrangement.query.filter_by(id=arrangement_id).first()
         except Exception as e:
-            print(f"Error fetching arrangement: {e}")
+            logger.error(f"Error fetching arrangement: {e}")
             return None
 
 
@@ -76,7 +80,7 @@ def update_arrangement(arrangement: Arrangement) -> Tuple[Dict[str, str], int]:
                     return {"status": "success", "message": "Arrangement updated successfully."}, 200
             return {"status": "fail", "message": "Arrangement not found."}, 404
         except Exception as e:
-            print(f"Error updating arrangement: {e}")
+            logger.error(f"Error updating arrangement: {e}")
             return {"status": "fail", "message": "Error updating arrangement."}, 500
 
 
@@ -90,7 +94,7 @@ def delete_arrangement(arrangement_id: int) -> Tuple[Dict[str, str], int]:
         else:
             return {"status": "fail", "message": "Arrangement not found."}, 404
     except Exception as e:
-        print(f"Error deleting arrangement: {e}")
+        logger.error(f"Error deleting arrangement: {e}")
         db.session.rollback()
         return {"status": "fail", "message": "Error deleting arrangement."}, 500
 
@@ -99,7 +103,7 @@ def get_user_arrangements(user_id: int) -> list[Arrangement]:
     try:
         return Arrangement.query.filter_by(user_id=user_id).order_by(Arrangement.created_at.desc()).all()
     except Exception as e:
-        print(f"Error fetching user arrangements: {e}")
+        logger.error(f"Error fetching user arrangements: {e}")
         return []
 
 
@@ -109,6 +113,6 @@ def save_changes(data) -> bool:
         db.session.commit()
         return True
     except Exception as e:
-        print(f"Error saving changes: {e}")
+        logger.error(f"Error saving changes: {e}")
         db.session.rollback()
         return False
