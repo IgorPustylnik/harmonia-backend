@@ -3,7 +3,7 @@ import logging
 import os
 import uuid
 
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 
 from app.main import db, app, s3_storage
 from app.main.model.arrangement_status import ArrangementStatus
@@ -106,17 +106,25 @@ def delete_arrangement(arrangement_id: int) -> Tuple[Dict[str, str], int]:
         return {"status": "fail", "message": "Error deleting arrangement."}, 500
 
 
-def get_user_arrangements(user_id: int, page: int, filter_query: str) -> Tuple[Dict, int]:
+def get_user_arrangements(user_id: int, page: int, search_query: str) -> Tuple[Dict, int]:
     try:
-        regex_filter = f"%{filter_query}%"
+        search_terms = [f"%{word}%" for word in search_query.split()] if search_query else []
 
         arrangements_query = Arrangement.query.filter(
-            Arrangement.user_id == user_id,
-            or_(
-                Arrangement.name.ilike(regex_filter),
-                Arrangement.tags.ilike(regex_filter)
-            )
-        ).order_by(Arrangement.created_at.desc())
+            Arrangement.user_id == user_id
+        )
+
+        if search_terms:
+            search_conditions = [
+                or_(
+                    Arrangement.name.ilike(term),
+                    Arrangement.tags.ilike(term)
+                ) for term in search_terms
+            ]
+            arrangements_query = (arrangements_query
+                                  .filter(and_(*search_conditions))
+                                  .order_by(Arrangement.created_at.desc())
+                                  )
 
         paginated_arrangements = arrangements_query.paginate(page=page, per_page=per_page, error_out=False)
         arrangements = list(map(lambda a: converter.arrangement_to_dict(a), paginated_arrangements.items))
@@ -124,12 +132,12 @@ def get_user_arrangements(user_id: int, page: int, filter_query: str) -> Tuple[D
         if len(arrangements) == 0:
             return {"error": "Nothing found"}, 404
 
-        next_page_url = f"{host_url}/api/arrangements?page={page + 1 if paginated_arrangements.has_next else None}"
-        prev_page_url = f"{host_url}/api/arrangements?page={page - 1 if paginated_arrangements.has_prev else None}"
+        next_page_url = f"{host_url}/api/arrangements/?page={page + 1 if paginated_arrangements.has_next else None}"
+        prev_page_url = f"{host_url}/api/arrangements/?page={page - 1 if paginated_arrangements.has_prev else None}"
 
-        if filter_query:
-            next_page_url += f"&filter={filter_query}"
-            prev_page_url += f"&filter={filter_query}"
+        if search_query:
+            next_page_url += f"&search_query={search_query}"
+            prev_page_url += f"&search_query={search_query}"
 
         result = {
             'count': paginated_arrangements.total,

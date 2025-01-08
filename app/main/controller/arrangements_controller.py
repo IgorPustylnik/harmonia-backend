@@ -62,12 +62,12 @@ class CreateArrangement(Resource):
 class ArrangementsList(Resource):
     @api.doc(description='Get an arrangements list', security='access_token',
              params={'page': {'description': 'Number of page', 'type': 'integer'},
-                     'filter': {'description': 'Filter query', 'type': 'string'}})
+                     'search_query': {'description': 'Search query', 'type': 'string'}})
     @api.response(200, 'Success', model=arrangements_list)
     @require_access_token
     def get(self, user_id):
         page = request.args.get('page', 1, type=int)
-        filter_query = request.args.get('filter', '', type=str)
+        search_query = request.args.get('search_query', '', type=str)
         try:
             try:
                 if user_service.get_user(user_id) is None:
@@ -75,7 +75,7 @@ class ArrangementsList(Resource):
             except Exception as e:
                 return {'error': str(e)}, 400
 
-            arrangements = arrangement_service.get_user_arrangements(user_id, page, filter_query)
+            arrangements = arrangement_service.get_user_arrangements(user_id, page, search_query)
             return arrangements
         except Exception as e:
             return {'error': str(e)}, 400

@@ -35,10 +35,10 @@ class ArrangementDTO:
         'status': fields.String(description='Status of the arrangement', example='PENDING'),
     })
 
-    arrangements_list = api.model('Arrangements paged list with filter query', {
+    arrangements_list = api.model('Arrangements paged list with search query', {
         'count': fields.Integer(description='Number of arrangements on the page', example=24),
         'pages': fields.Integer(description='Total number of pages', example=3),
-        'next': fields.String(description='Next page', example=f'{host_url}/api/arrangements?page=2&filter=awesome'),
+        'next': fields.String(description='Next page', example=f'{host_url}/api/arrangements/?page=2&search_query=awesome'),
         'prev': fields.String(description='Previous page', example="null"),
         'results': fields.List(fields.Nested(arrangement), description='List of arrangements')
     })
