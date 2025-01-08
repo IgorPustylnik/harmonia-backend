@@ -27,6 +27,7 @@ class ArrangementDTO:
         'name': fields.String(description='Arrangement name', example='My Awesome Arrangement'),
         'bpm': fields.Integer(description='Beats per minute', example=160),
         'tags': fields.String(description='Arrangement tags', example='rock, energetic'),
+        'file': fields.String(description='Arrangement file', example='/api/arrangements/file/1'),
         'created_at': fields.DateTime(description='Arrangement created at', example=str(datetime.utcnow())),
         'status': fields.String(description='Status of the arrangement', example='PENDING'),
     })

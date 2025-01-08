@@ -19,13 +19,3 @@ class Arrangement(db.Model):
     status = db.Column(db.Enum(ArrangementStatus), default=ArrangementStatus.PENDING, nullable=False)
 
     user = relationship(User, back_populates="arrangements")
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "bpm": self.bpm,
-            "tags": self.tags,
-            "created_at": self.created_at.isoformat(),
-            "status": self.status.value
-        }

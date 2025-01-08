@@ -6,6 +6,7 @@ from flask import request, send_file, abort
 from flask_restx import Resource
 
 from .. import s3_storage
+from ..util import converter
 from ..util.decorator import require_access_token
 from ..util.dto import ArrangementDTO
 from ..service.database import arrangement_service, user_service
@@ -87,7 +88,7 @@ class SingleArrangement(Resource):
             arrangement = arrangement_service.get_arrangement(arrangement_id)
 
             if arrangement and arrangement.user_id == user_id:
-                return arrangement.to_dict(), 200
+                return converter.arrangement_to_dict(arrangement), 200
             elif arrangement:
                 return {'error': 'Access denied'}, 403
 
