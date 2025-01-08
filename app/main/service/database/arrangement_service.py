@@ -1,6 +1,9 @@
 import datetime
 import logging
+import os
 import uuid
+
+from sqlalchemy import or_
 
 from app.main import db, app, s3_storage
 from app.main.model.arrangement_status import ArrangementStatus
@@ -8,9 +11,13 @@ from app.main.model.arrangements import Arrangement
 from typing import Dict, Tuple
 
 from app.main.service import music_gen_service
+from app.main.util import converter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('arrangement_service')
+
+per_page = int(os.getenv('ARRANGEMENTS_PER_PAGE'))
+host_url = os.getenv("HOST_URL")
 
 
 def generate_music(arrangement_id: int, drums_file: bytes, bpm: int, tags: str, completion):
@@ -48,7 +55,7 @@ def add_arrangement(data: Dict[str, str]) -> Tuple[Dict[str, str], int]:
             status=ArrangementStatus(data.get("status", "PENDING")),
             created_at=datetime.datetime.utcnow()
         )
-        if save_changes(new_arrangement):
+        if _save_changes(new_arrangement):
             return {"status": "success",
                     "message": "Arrangement added successfully.",
                     "id": new_arrangement.id}, 201
@@ -76,7 +83,7 @@ def update_arrangement(arrangement: Arrangement) -> Tuple[Dict[str, str], int]:
                 arrangement_in_db.status = arrangement.status
                 arrangement_in_db.file_name = arrangement.file_name
 
-                if save_changes(arrangement_in_db):
+                if _save_changes(arrangement_in_db):
                     return {"status": "success", "message": "Arrangement updated successfully."}, 200
             return {"status": "fail", "message": "Arrangement not found."}, 404
         except Exception as e:
@@ -99,15 +106,47 @@ def delete_arrangement(arrangement_id: int) -> Tuple[Dict[str, str], int]:
         return {"status": "fail", "message": "Error deleting arrangement."}, 500
 
 
-def get_user_arrangements(user_id: int) -> list[Arrangement]:
+def get_user_arrangements(user_id: int, page: int, filter_query: str) -> Tuple[Dict, int]:
     try:
-        return Arrangement.query.filter_by(user_id=user_id).order_by(Arrangement.created_at.desc()).all()
+        regex_filter = f"%{filter_query}%"
+
+        arrangements_query = Arrangement.query.filter(
+            Arrangement.user_id == user_id,
+            or_(
+                Arrangement.name.ilike(regex_filter),
+                Arrangement.tags.ilike(regex_filter)
+            )
+        ).order_by(Arrangement.created_at.desc())
+
+        paginated_arrangements = arrangements_query.paginate(page=page, per_page=per_page, error_out=False)
+        arrangements = list(map(lambda a: converter.arrangement_to_dict(a), paginated_arrangements.items))
+
+        if len(arrangements) == 0:
+            return {"error": "Nothing found"}, 404
+
+        next_page_url = f"{host_url}/api/arrangements?page={page + 1 if paginated_arrangements.has_next else None}"
+        prev_page_url = f"{host_url}/api/arrangements?page={page - 1 if paginated_arrangements.has_prev else None}"
+
+        if filter_query:
+            next_page_url += f"&filter={filter_query}"
+            prev_page_url += f"&filter={filter_query}"
+
+        result = {
+            'count': paginated_arrangements.total,
+            'pages': paginated_arrangements.pages,
+            'next': next_page_url if paginated_arrangements.has_next else None,
+            'prev': prev_page_url if paginated_arrangements.has_prev else None,
+            'results': arrangements
+        }
+
+        return result, 200
+
     except Exception as e:
         logger.error(f"Error fetching user arrangements: {e}")
-        return []
+        return {'error': 'An error occurred while fetching arrangements.'}, 500
 
 
-def save_changes(data) -> bool:
+def _save_changes(data) -> bool:
     try:
         db.session.add(data)
         db.session.commit()
