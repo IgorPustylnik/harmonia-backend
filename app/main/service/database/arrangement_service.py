@@ -106,25 +106,27 @@ def delete_arrangement(arrangement_id: int) -> Tuple[Dict[str, str], int]:
         return {"status": "fail", "message": "Error deleting arrangement."}, 500
 
 
-def get_user_arrangements(user_id: int, page: int, search_query: str) -> Tuple[Dict, int]:
+def get_user_arrangements(user_id: int, page: int, search_query: str, status: [ArrangementStatus]) -> Tuple[Dict, int]:
     try:
-        search_terms = [f"%{word}%" for word in search_query.split()] if search_query else []
+        status_filter = Arrangement.status.in_(status) if status else None
 
-        arrangements_query = Arrangement.query.filter(
-            Arrangement.user_id == user_id
-        )
-
-        if search_terms:
-            search_conditions = [
+        search_terms = [f"%{word}%" for word in search_query.split()] if len(search_query) > 0 else []
+        search_filter = and_(
+            *[
                 or_(
                     Arrangement.name.ilike(term),
                     Arrangement.tags.ilike(term)
                 ) for term in search_terms
             ]
-            arrangements_query = (arrangements_query
-                                  .filter(and_(*search_conditions))
-                                  .order_by(Arrangement.created_at.desc())
-                                  )
+        ) if search_terms else None
+
+        filters = [Arrangement.user_id == user_id]
+        if status_filter is not None:
+            filters.append(status_filter)
+        if search_filter is not None:
+            filters.append(search_filter)
+
+        arrangements_query = Arrangement.query.filter(and_(*filters)).order_by(Arrangement.created_at.desc())
 
         paginated_arrangements = arrangements_query.paginate(page=page, per_page=per_page, error_out=False)
         arrangements = list(map(lambda a: converter.arrangement_to_dict(a), paginated_arrangements.items))

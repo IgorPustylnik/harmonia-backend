@@ -6,6 +6,7 @@ from flask import request, send_file, abort
 from flask_restx import Resource
 
 from .. import s3_storage
+from ..model.arrangement_status import ArrangementStatus
 from ..util import converter
 from ..util.decorator import require_access_token
 from ..util.dto import ArrangementDTO
@@ -62,12 +63,15 @@ class CreateArrangement(Resource):
 class ArrangementsList(Resource):
     @api.doc(description='Get an arrangements list', security='access_token',
              params={'page': {'description': 'Number of page', 'type': 'integer'},
-                     'search_query': {'description': 'Search query', 'type': 'string'}})
+                     'search_query': {'description': 'Search query', 'type': 'string'},
+                     'status': {'description': 'Arrangement status (list separated by commas)', 'type': 'string'}})
     @api.response(200, 'Success', model=arrangements_list)
     @require_access_token
     def get(self, user_id):
         page = request.args.get('page', 1, type=int)
         search_query = request.args.get('search_query', '', type=str)
+        status_string = request.args.get('status', '', type=str)
+        status = [ArrangementStatus(s.upper()) for s in status_string.split(',') if status_string != '']
         try:
             try:
                 if user_service.get_user(user_id) is None:
@@ -75,7 +79,7 @@ class ArrangementsList(Resource):
             except Exception as e:
                 return {'error': str(e)}, 400
 
-            arrangements = arrangement_service.get_user_arrangements(user_id, page, search_query)
+            arrangements = arrangement_service.get_user_arrangements(user_id, page, search_query, status)
             return arrangements
         except Exception as e:
             return {'error': str(e)}, 400
