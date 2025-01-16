@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class ArrangementStatus(Enum):
-    IN_PROGRESS = "IN_PROGRESS"
+    PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
     PENDING = "PENDING"
     FAILED = "FAILED"
