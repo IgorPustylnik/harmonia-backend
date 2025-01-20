@@ -141,6 +141,11 @@ def get_user_arrangements(user_id: int, page: int, search_query: str, status: [A
             next_page_url += f"&search_query={search_query}"
             prev_page_url += f"&search_query={search_query}"
 
+        if status_filter is not None:
+            status_query = ",".join(map(lambda x: x.value.lower(), status))
+            next_page_url += f"&status={status_query}"
+            prev_page_url += f"&status={status_query}"
+
         result = {
             'count': paginated_arrangements.total,
             'pages': paginated_arrangements.pages,
