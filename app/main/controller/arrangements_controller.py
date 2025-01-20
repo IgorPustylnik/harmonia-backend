@@ -47,6 +47,7 @@ class CreateArrangement(Resource):
         result = arrangement_service.add_arrangement(data)
 
         if result[1] == 201:
+            websocket_controller.data_updated(user_id)
             arrangement_id = int(result[0]['id'])
             drums_file = bytes(file.read())
             executor.submit(arrangement_service.generate_music,
@@ -54,7 +55,7 @@ class CreateArrangement(Resource):
                             drums_file=drums_file,
                             bpm=data['bpm'],
                             tags=data['tags'],
-                            completion=websocket_controller.data_updated(user_id))
+                            completion=lambda: websocket_controller.data_updated(user_id))
 
         return result
 
