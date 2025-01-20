@@ -53,6 +53,6 @@ def data_updated(user_id):
     if user_id in clients:
         ws = clients[user_id]
         try:
-            ws.send(json.dumps({"message": "Data updated"}))
+            ws.send(json.dumps({"status": "success", "message": "Data updated"}))
         except Exception as e:
             logger.info(f"Error sending WebSocket message: {e}")
