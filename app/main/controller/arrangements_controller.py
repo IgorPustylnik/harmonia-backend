@@ -17,6 +17,7 @@ api = ArrangementDTO().api
 create_arrangement = ArrangementDTO().create_arrangement
 create_arrangement_response = ArrangementDTO().create_arrangement_response
 single_arrangement = ArrangementDTO().arrangement
+rename_arrangement = ArrangementDTO().rename_arrangement
 arrangements_list = ArrangementDTO().arrangements_list
 
 executor = ThreadPoolExecutor(max_workers=5)
@@ -87,7 +88,7 @@ class ArrangementsList(Resource):
 
 
 @api.route('/<int:arrangement_id>')
-class SingleArrangement(Resource):
+class Arrangement(Resource):
     @api.doc(description='Get a single arrangement', security='access_token')
     @api.response(200, 'Success', model=single_arrangement)
     @require_access_token
@@ -103,6 +104,34 @@ class SingleArrangement(Resource):
             return {'error': 'Arrangement not found'}, 404
         except Exception as e:
             return {'error': str(e)}, 400
+
+    @api.doc(description='Rename an arrangement', security='access_token')
+    @api.response(200, 'Success')
+    @api.expect(rename_arrangement)
+    @require_access_token
+    def patch(self, user_id, arrangement_id):
+        arrangement = arrangement_service.get_arrangement(arrangement_id)
+
+        if arrangement and arrangement.user_id == user_id:
+            arrangement.name = request.json.get('name')
+            return arrangement_service.update_arrangement(arrangement)
+        elif arrangement:
+            return {'error': 'Access denied'}, 403
+
+        return {'error': 'Arrangement not found'}, 404
+
+    @api.doc(description='Delete an arrangement', security='access_token')
+    @api.response(200, 'Success')
+    @require_access_token
+    def delete(self, user_id, arrangement_id):
+        arrangement = arrangement_service.get_arrangement(arrangement_id)
+
+        if arrangement and arrangement.user_id == user_id:
+            return arrangement_service.delete_arrangement(arrangement_id)
+        elif arrangement:
+            return {'error': 'Access denied'}, 403
+
+        return {'error': 'Arrangement not found'}, 404
 
 
 @api.route('/file/<int:arrangement_id>')

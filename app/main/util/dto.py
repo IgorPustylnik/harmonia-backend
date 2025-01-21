@@ -15,14 +15,14 @@ class ArrangementDTO:
         'tags': fields.String(description='Tags for desired melody', example='rock, energetic'),
     })
 
+    rename_arrangement = api.model('Rename arrangement', {
+        'name': fields.String(required=True, description='Name of the arrangement', example='Cool music')
+    })
+
     create_arrangement_response = api.model('Create arrangement response', {
         'status': fields.String(description='Status of the arrangement', example='success'),
         'message': fields.String(description='Message', example='Arrangement added successfully'),
         'id': fields.Integer(description='Arrangement ID', example=1)
-    })
-
-    get_arrangement_file = api.model('Get arrangement file', {
-        'id': fields.Integer(required=True, description='Arrangement ID', example=1)
     })
 
     arrangement = api.model('Arrangement', {
