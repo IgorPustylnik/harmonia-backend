@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
 from flask import request, send_file, abort
-from flask_restx import Resource
+from flask_restx import Resource, reqparse
 
 from .. import s3_storage
 from ..model.arrangement_status import ArrangementStatus
@@ -25,8 +25,16 @@ executor = ThreadPoolExecutor(max_workers=5)
 
 @api.route('/create')
 class CreateArrangement(Resource):
+    # For Swagger only
+    upload_parser = reqparse.RequestParser()
+    upload_parser.add_argument('name', type=str, location='form', required=True, help="Name of the arrangement")
+    upload_parser.add_argument('tags', type=str, location='form', required=True,
+                               help="Tags for desired melody")
+    upload_parser.add_argument('bpm', type=int, location='form', required=True, help="BPM")
+    upload_parser.add_argument('file', type='file', location='files', required=True, help="The drums file")
+
     @api.doc(description='Create an arrangement', security='access_token')
-    @api.expect(create_arrangement)
+    @api.expect(upload_parser)
     @api.response(201, 'Success', model=create_arrangement_response)
     @require_access_token
     def post(self, user_id):
@@ -34,16 +42,12 @@ class CreateArrangement(Resource):
             return {'error': 'No file part in the request'}, 400
 
         file = request.files['file']
-        if file.filename == '':
-            return {'error': 'No file selected'}, 400
 
-        json_string = request.form.get('json')
+        name = request.form.get('name')
+        tags = request.form.get('tags')
+        bpm = int(request.form.get('bpm'))
 
-        if not json_string:
-            return {'error': 'No JSON data provided'}, 400
-
-        data = json.loads(json_string)
-        data["user_id"] = user_id
+        data = {"user_id": user_id, "name": name, "tags": tags, "bpm": bpm}
 
         result = arrangement_service.add_arrangement(data)
 
