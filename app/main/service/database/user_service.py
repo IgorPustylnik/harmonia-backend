@@ -16,7 +16,7 @@ def register_user(user_id: int) -> Tuple[Dict[str, str], int]:
             save_changes(new_user)
             return {"status": "success", "message": "User registered successfully."}, 201
         else:
-            return {"status": "fail", "message": "User already exists."}, 403
+            return {"status": "success", "message": "User already exists."}, 202
     except Exception as e:
         logger.error(f"Error during user registration: {e}")
         return {"status": "fail", "message": "Error during registration."}, 500
