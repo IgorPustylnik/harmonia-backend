@@ -1,4 +1,4 @@
-import json
+import os
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
@@ -11,6 +11,7 @@ from ..util import converter
 from ..util.decorator import require_access_token
 from ..util.dto import ArrangementDTO
 from ..service.database import arrangement_service, user_service
+from ..service import vk_api_service, audio_to_video_service
 from ..controller import websocket_controller
 
 api = ArrangementDTO().api
@@ -19,6 +20,7 @@ create_arrangement_response = ArrangementDTO().create_arrangement_response
 single_arrangement = ArrangementDTO().arrangement
 rename_arrangement = ArrangementDTO().rename_arrangement
 arrangements_list = ArrangementDTO().arrangements_list
+upload_video = ArrangementDTO().upload_video
 
 executor = ThreadPoolExecutor(max_workers=5)
 
@@ -45,7 +47,7 @@ class CreateArrangement(Resource):
 
         name = request.form.get('name')
         tags = request.form.get('tags')
-        bpm = int(request.form.get('bpm'))
+        bpm = float(request.form.get('bpm'))
 
         data = {"user_id": user_id, "name": name, "tags": tags, "bpm": bpm}
 
@@ -174,3 +176,28 @@ class ArrangementFile(Resource):
             )
         except Exception as e:
             abort(500, "Error sending file.")
+
+
+@api.route('/upload_video/<int:arrangement_id>')
+class ArrangementShare(Resource):
+    @api.doc(description='Upload arrangement to VK as a video. Upload link must be provided.', security='access_token')
+    @api.response(200, 'Link received')
+    @api.expect(upload_video)
+    @require_access_token
+    def post(self, user_id, arrangement_id):
+
+        url = request.json.get('url')
+        if url is None:
+            return {'error': 'Missing url'}, 400
+        arrangement = arrangement_service.get_arrangement(arrangement_id)
+
+        if arrangement and arrangement.user_id == user_id:
+
+            audio_bytes = s3_storage.get(arrangement.file_name)
+            video_bytes = audio_to_video_service.convert_audio_to_video(audio_bytes)
+            response = vk_api_service.upload_video(url, video_bytes)
+            return response.json(), response.status_code
+        elif arrangement:
+            return {'error': 'Access denied'}, 403
+
+        return {'error': 'Arrangement not found'}, 404

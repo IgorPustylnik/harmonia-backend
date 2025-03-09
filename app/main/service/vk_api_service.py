@@ -1,5 +1,5 @@
 import os
-
+from io import BytesIO
 import requests
 
 client_id = os.getenv('VK_CLIENT_ID')
@@ -24,3 +24,26 @@ def get_user_id(access_token: str) -> int:
             raise Exception("Token is invalid")
     except requests.RequestException as e:
         raise Exception(f"VK API request error: {e}")
+
+
+def upload_video(url: str, video_bytes: bytes) -> requests.Response:
+    with BytesIO(video_bytes) as video_file:
+        files = {
+            'video_file': (
+                'video.mp4',
+                video_file,
+                'video/mp4'
+            )
+        }
+
+        response = requests.post(
+            url,
+            files=files
+        )
+
+    if response.status_code not in range(200, 300):
+        raise requests.HTTPError(
+            f"Upload failed with status {response.status_code}: {response.text}"
+        )
+
+    return response

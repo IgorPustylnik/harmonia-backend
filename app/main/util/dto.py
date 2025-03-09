@@ -43,6 +43,10 @@ class ArrangementDTO:
         'results': fields.List(fields.Nested(arrangement), description='List of arrangements')
     })
 
+    upload_video = api.model('Upload video', {
+        'url': fields.String(description='Link for video to be uploaded to', example='https://ovu.mycdn.me/upload.do?sig=6c...')
+    })
+
 
 class UserDTO:
     api = Namespace('user', description='User related operations')
