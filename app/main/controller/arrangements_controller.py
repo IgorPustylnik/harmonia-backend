@@ -1,10 +1,7 @@
-import os
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-
-from flask import request, send_file, abort
+from flask import request, send_file
 from flask_restx import Resource, reqparse
-
 from .. import s3_storage
 from ..model.arrangement_status import ArrangementStatus
 from ..util import converter
@@ -159,23 +156,17 @@ class ArrangementFile(Resource):
         if not file_name:
             return {"message": "File not found."}, 404
 
-        try:
-            file_data = s3_storage.get(file_name)
-
-            if not file_data:
-                return {"message": "File content is empty or not found."}, 404
-
-            byte_io = BytesIO(file_data)
-            byte_io.seek(0)
-
-            return send_file(
-                byte_io,
-                as_attachment=True,
-                download_name=arrangement_name,
-                mimetype='application/octet-stream'
-            )
-        except Exception as e:
-            abort(500, "Error sending file.")
+        file_data = s3_storage.get(file_name)
+        if not file_data:
+            return {"message": "File content is empty or not found."}, 404
+        byte_io = BytesIO(file_data)
+        byte_io.seek(0)
+        return send_file(
+            byte_io,
+            as_attachment=True,
+            download_name=arrangement_name,
+            mimetype='application/octet-stream'
+        )
 
 
 @api.route('/upload_video/<int:arrangement_id>')

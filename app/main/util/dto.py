@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-
 from flask_restx import Namespace, fields
 
 host_url = os.getenv('HOST_URL')

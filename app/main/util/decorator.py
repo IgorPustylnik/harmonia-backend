@@ -1,7 +1,5 @@
 from functools import wraps
-
 from flask import request
-
 from ..service import vk_api_service
 
 

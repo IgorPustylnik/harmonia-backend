@@ -1,6 +1,5 @@
 from flask_restx import Api
 from flask import Blueprint
-
 from .main.controller.arrangements_controller import api as arrangements_ns
 from .main.controller.user_controller import api as user_ns
 

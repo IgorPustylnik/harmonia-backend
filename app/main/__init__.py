@@ -1,8 +1,6 @@
 import os
-
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-
 from .service.s3_storage_service import S3Storage
 from .controller.websocket_controller import sock
 

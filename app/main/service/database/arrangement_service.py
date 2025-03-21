@@ -104,6 +104,7 @@ def delete_arrangement(arrangement_id: int) -> Tuple[Dict[str, str], int]:
         if arrangement:
             db.session.delete(arrangement)
             db.session.commit()
+            s3_storage.delete(arrangement.file_name)
             return {"status": "success", "message": "Arrangement deleted successfully."}, 200
         else:
             return {"status": "fail", "message": "Arrangement not found."}, 404

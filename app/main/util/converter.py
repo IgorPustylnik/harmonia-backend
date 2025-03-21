@@ -1,5 +1,4 @@
 import os
-
 from ..model.arrangements import Arrangement
 
 host_url = os.getenv('HOST_URL')

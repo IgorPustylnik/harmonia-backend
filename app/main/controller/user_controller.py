@@ -1,6 +1,5 @@
 from flask_restx import Resource
 from flask import request
-
 from ..util.dto import UserDTO
 from ..service.database import user_service
 from ..controller import extract_user_id

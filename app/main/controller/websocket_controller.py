@@ -1,6 +1,5 @@
 import json
 import logging
-
 from flask_sock import Sock
 from ..service import vk_api_service
 

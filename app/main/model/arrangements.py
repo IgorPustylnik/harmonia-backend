@@ -1,6 +1,5 @@
 from sqlalchemy import text
 from sqlalchemy.orm import relationship
-
 from .arrangement_status import ArrangementStatus
 from .users import User
 from app.main import db
