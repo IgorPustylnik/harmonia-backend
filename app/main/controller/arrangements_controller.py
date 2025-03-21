@@ -56,13 +56,13 @@ class CreateArrangement(Resource):
         if result[1] == 201:
             websocket_controller.data_updated(user_id)
             arrangement_id = int(result[0]['id'])
-            drums_file = bytes(file.read())
-            executor.submit(arrangement_service.generate_music,
+            drums_bytes = bytes(file.read())
+            executor.submit(arrangement_service.create_music,
                             arrangement_id=arrangement_id,
-                            drums_file=drums_file,
-                            bpm=data['bpm'],
-                            tags=data['tags'],
-                            completion=lambda: websocket_controller.data_updated(user_id))
+                            drums_bytes=drums_bytes,
+                            bpm=bpm,
+                            tags=tags,
+                            websocket_status_update_handler=lambda: websocket_controller.data_updated(user_id))
 
         return result
 

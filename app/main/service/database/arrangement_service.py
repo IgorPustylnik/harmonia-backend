@@ -2,15 +2,12 @@ import datetime
 import logging
 import os
 import uuid
-
 from sqlalchemy import or_, and_
-
 from app.main import db, app, s3_storage
 from app.main.model.arrangement_status import ArrangementStatus
 from app.main.model.arrangements import Arrangement
 from typing import Dict, Tuple
-
-from app.main.service import music_gen_service
+from app.main.service.music_gen_service import MusicGenerator
 from app.main.util import converter
 
 logging.basicConfig(level=logging.INFO)
@@ -20,12 +17,22 @@ per_page = int(os.getenv('ARRANGEMENTS_PER_PAGE'))
 host_url = os.getenv("HOST_URL")
 
 
-def generate_music(arrangement_id: int, drums_file: bytes, bpm: int, tags: str, completion):
+def create_music(arrangement_id: int, drums_bytes: bytes, bpm: float, tags: str, websocket_status_update_handler):
     arrangement = None
-    try:
-        file_response, file_status = music_gen_service.create(drums_file=drums_file, bpm=bpm, tags=tags)
 
+    def update_status(status: ArrangementStatus):
+        arrangement.status = status
+        update_arrangement(arrangement)
+
+        websocket_status_update_handler()
+
+    try:
         arrangement = get_arrangement(arrangement_id)
+        if arrangement is None:
+            return
+
+        service = MusicGenerator(update_status)
+        file_response, file_status = service.create(drums_bytes, bpm, tags)
 
         if file_status != 200:
             arrangement.status = ArrangementStatus.FAILED
@@ -35,12 +42,12 @@ def generate_music(arrangement_id: int, drums_file: bytes, bpm: int, tags: str, 
             s3_storage.upload(file_response, arrangement.file_name)
 
         update_arrangement(arrangement)
-        completion()
+        websocket_status_update_handler()
     except Exception as e:
         if arrangement:
             arrangement.status = ArrangementStatus.FAILED
             update_arrangement(arrangement)
-            completion()
+            websocket_status_update_handler()
         logger.error(f"Error generating music or updating arrangement: {e}")
 
 
